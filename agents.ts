@@ -73,7 +73,7 @@ export async function initializeAgent() {
          apiKeyName: process.env.CDP_API_KEY_NAME,
          apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(/\\n/g, "\n"),
          cdpWalletData: walletDataStr || undefined,
-         networkId: process.env.NETWORK_ID || "base-sepolia",
+         networkId: "base-sepolia",
       };
 
       const walletProvider = await CdpWalletProvider.configureWithWallet(config);
