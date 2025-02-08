@@ -1,17 +1,18 @@
 import { Wallet, WalletAddress } from '@coinbase/coinbase-sdk';
-import { AgentKit, CdpWalletProvider, cdpApiActionProvider, cdpWalletActionProvider, customActionProvider, } from "@coinbase/agentkit";
+import { AgentKit, CdpWalletProvider, EvmWalletProvider, customActionProvider, cdpApiActionProvider, cdpWalletActionProvider } from "@coinbase/agentkit";
 import { getLangChainTools } from "@coinbase/agentkit-langchain";
 import { MemorySaver } from "@langchain/langgraph";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { ChatOpenAI } from "@langchain/openai";
 import { z } from "zod";
-import { createPublicClient, parseUnits, http, formatUnits } from 'viem';
+import { createPublicClient, parseUnits, http, formatUnits, } from 'viem';
 import { baseSepolia } from 'viem/chains';
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 import { AAVE_POOL_ABI, USDC_ADDRESS, AAVE_POOL_ADDRESS, ERC20_ABI } from './constants';
 import aaveAbi from './aave_v3_abi.json';
 import usdcAbi from './usdc_abi.json';
+//TODO:TEST
 
 dotenv.config();
 
@@ -61,8 +62,6 @@ export async function initializeAgent() {
       let walletDataStr: string | null = null;
       let wallet: Wallet | null = null;
       let address: WalletAddress | null = null;
-
-      // Read existing wallet data if available
       if (fs.existsSync(WALLET_DATA_FILE)) {
          try {
             walletDataStr = fs.readFileSync(WALLET_DATA_FILE, "utf8");
@@ -71,8 +70,6 @@ export async function initializeAgent() {
             throw error;
          }
       }
-
-      // Configure CDP Wallet Provider
       const config = {
          apiKeyName: process.env.CDP_API_KEY_NAME,
          apiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY?.replace(/\\n/g, "\n"),
@@ -119,6 +116,7 @@ export async function initializeAgent() {
                value: amountToSupply.toString(),
             }
             try {
+               //TODO: 
                const approveContract = await wallet!.invokeContract({
                   contractAddress: USDC_ADDRESS,
                   method: "approve",
@@ -129,6 +127,7 @@ export async function initializeAgent() {
                if (!approveTx) {
                   throw new Error('Failed to approve USDC spend');
                }
+               console.log("Approved USDC spend");
                const supplyContract = await wallet.invokeContract({
                   contractAddress: AAVE_POOL_ADDRESS,
                   method: "supply",
@@ -157,7 +156,7 @@ export async function initializeAgent() {
          name: "borrow_usdc",
          description: "Borrows USDC from the AAVE pool on baseSepolia testnet. This action would return a transaction hash if successful and the user's position in AAVE maybe dangerous. So better to get a new overview of the user's aave overview after the action executed to check the user's position and provide financial advice according to updated overview.",
          schema: z.object({ amount: z.string() }),
-         invoke: async (args: { amount: string }) => {
+         invoke: async (walletProvider: EvmWalletProvider, args: { amount: string }) => {
             try {
                const amount = args.amount;
                const amountToBorrow = parseUnits(amount, 6);
@@ -234,27 +233,32 @@ export async function initializeAgent() {
          invoke: async (args: { amount: string }) => {
             try {
                const amountToWithdraw = parseUnits(args.amount, 6);
-               const withdrawContract = await wallet.invokeContract({
+               const userAddr = walletProvider.getAddress();
+               //TODO:
+               const withdrawContract = await wallet!.invokeContract({
                   contractAddress: AAVE_POOL_ADDRESS,
                   method: "withdraw",
                   args: {
                      asset: USDC_ADDRESS,
                      amount: amountToWithdraw.toString(),
-                     to: address.getId()
+                     to: userAddr
                   },
                   abi: aaveAbi,
                });
+               console.log("withdrawContract TX:", withdrawContract.getTransaction());
 
                const withdrawTx = await withdrawContract.wait();
                if (!withdrawTx) {
                   return 'Failed to withdraw USDC from Aave';
                }
                return `USDC withdrawn from Aave: ${withdrawTx.getTransactionHash()}`;
-            } catch (err) {
+            } catch (err: any) {
+               console.log('Error withdrawing USDC from Aave:', err);
                return `Sorry, error withdrawing USDC from Aave: ${err}`;
             }
          }
       })
+
       // Initialize AgentKit
       const agentkit = await AgentKit.from({
          walletProvider,
@@ -289,13 +293,11 @@ export async function initializeAgent() {
          messageModifier: `
         You are a helpful financial agent that can interact onchain using the Coinbase Developer Platform AgentKit. You are empowered to interact onchain using your tools. If you ever need funds, you can request them from the faucet if you are on network ID 'base-sepolia'. Before executing your first action, get the wallet details to see what network you're on. If there is a 5XX (internal) HTTP error code, ask the user to try again later. 
         If someone asks you to do something you can't do with your currently available tools, you must say so. Be concise and helpful with your responses. Refrain from restating your tools' descriptions unless it is explicitly requested.
-        The commands are mostly within the scope of AAVE with USDC and one of the few exception is that you can get some faucet ETH on sepolia-base network for gas fees. As a financil advisor, you need to retrieve an overview of user's aave account before and after executing any action. Then provide your analysis of the impact of the action according to the overviews before and after action executed. 
+        The commands are mostly within the scope of AAVE with USDC and one of the few exception is that you can get some faucet ETH on sepolia-base network for gas fees or wrap eth. As a financil advisor, you need to retrieve an overview of user's aave account before and after executing any action. Then provide your analysis of the impact of the action according to the overviews before and after action executed. 
         The health factor is a critical metric within the Aave Protocol that measures the safety of a borrow position. Health Factor = (Total Collateral Value * Weighted Average Liquidation Threshold) / Total Borrow Value. Health Factor indicates the stability of a borrow position, with a health factor below 1 signaling the risk of liquidation.
+        However, if you encounter any error, please provide the error message to the user and no need to provide user's account analysis.
         `,
       });
-      // Save wallet data
-      // const exportedWallet = await walletProvider.exportWallet();
-      // fs.writeFileSync(WALLET_DATA_FILE, JSON.stringify(exportedWallet));
       return { agent, config: agentConfig };
    } catch (error) {
       console.error("Failed to initialize agent:", error);
