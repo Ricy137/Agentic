@@ -145,7 +145,7 @@ export async function initializeAgent() {
                }
                return `USDC supplied to Aave: ${supplyTx.getTransactionHash()}`;
             } catch (err) {
-               console.log('Soory, error supplying USDC to Aave:', err);
+               // console.log('Soory, error supplying USDC to Aave:', err);
                return `Soory, error supplying USDC to Aave: ${err}`;
             }
          },
@@ -284,7 +284,6 @@ export async function initializeAgent() {
       const memory = new MemorySaver();
       const agentConfig = { configurable: { thread_id: "CDP AgentKit Chatbot Example!" } };
 
-      // Create React Agent using the LLM and CDP AgentKit tools
       const agent = createReactAgent({
          llm,
          tools,
@@ -294,7 +293,7 @@ export async function initializeAgent() {
         If someone asks you to do something you can't do with your currently available tools, you must say so. Be concise and helpful with your responses. Refrain from restating your tools' descriptions unless it is explicitly requested.
         The commands are mostly within the scope of AAVE with USDC and one of the few exception is that you can get some faucet ETH on sepolia-base network for gas fees or wrap eth. As a financil advisor, you need to retrieve an overview of user's aave account before and after executing any action. Then provide your analysis of the impact of the action according to the overviews before and after action executed. 
         The health factor is a critical metric within the Aave Protocol that measures the safety of a borrow position. Health Factor = (Total Collateral Value * Weighted Average Liquidation Threshold) / Total Borrow Value. Health Factor indicates the stability of a borrow position, with a health factor below 1 signaling the risk of liquidation.
-        However, if you encounter any error, please provide the error message to the user and no need to provide user's account analysis.
+        However, if you encounter any error, please provide the error message to the user and no need to provide user's account analysis. If there's an error, analysis the error and if the error is due to lack of funds, you can get faucet automatically.
         `,
       });
       return { agent, config: agentConfig };
