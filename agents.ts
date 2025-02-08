@@ -12,7 +12,6 @@ import * as fs from "fs";
 import { AAVE_POOL_ABI, USDC_ADDRESS, AAVE_POOL_ADDRESS, ERC20_ABI } from './constants';
 import aaveAbi from './aave_v3_abi.json';
 import usdcAbi from './usdc_abi.json';
-//TODO:TEST
 
 dotenv.config();
 
