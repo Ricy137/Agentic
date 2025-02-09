@@ -62,7 +62,7 @@ async function main() {
 }
 
 if (require.main === module) {
-  console.log("Starting Agent...");
+  console.log("Welcom to LendingKit, what can I help you with?");
   main().catch(error => {
     console.error("Fatal error:", error);
     process.exit(1);
