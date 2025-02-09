@@ -10,7 +10,6 @@ dotenv.config();
 validateEnvironment();
 
 async function runChatMode(agent: any, config: any) {
-  console.log("Starting chat mode... Type 'exit' to end.");
 
   const rl = readline.createInterface({
     input: process.stdin,
